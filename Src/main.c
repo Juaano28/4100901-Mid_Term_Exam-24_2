@@ -82,5 +82,6 @@ int main(void) {
         }
 
         run_state_machine();
+        SysTick_Handle();
     }
 }
