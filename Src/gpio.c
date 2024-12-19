@@ -49,17 +49,53 @@ void configure_gpio_for_usart(void)
     GPIOA->PUPDR &= ~(3U << (3 * 2)); // No pull-up, no pull-down for PA3
 }
 
+void init_gpio_pin(GPIO_t *GPIOx, uint8_t pin, uint8_t mode)
+{
+    GPIOx->MODER &= ~(0x3 << (pin * 2)); // Clear MODER bits for this pin
+    GPIOx->MODER |= (mode << (pin * 2)); // Set MODER bits for this pin
+}
 
+//Configuramos tanto led como salida y el boton como entrada, para esto se necesita realizar una serie de pasos
+//Como habilitar el reloj "RCC", configurarlo para los "GPIOs" y tambien para el "Sys"
 void configure_gpio(void)
 {
+    *RCC_AHB2ENR |= (1 << 0) | (1 << 2); // Enable clock for GPIOA and GPIOC
 
+    // Enable clock for SYSCFG
+    *RCC_APB2ENR |= (1 << 0); // RCC_APB2ENR_SYSCFGEN
+
+    // Configure SYSCFG EXTICR to map EXTI13 to PC13
+    SYSCFG->EXTICR[3] &= ~(0xF << 4); // Clear bits for EXTI13
+    SYSCFG->EXTICR[3] |= (0x2 << 4);  // Map EXTI13 to Port C
+
+    // Configure EXTI13 for falling edge trigger
+    EXTI->FTSR1 |= (1 << BUTTON_PIN);  // Enable falling trigger
+    EXTI->RTSR1 &= ~(1 << BUTTON_PIN); // Disable rising trigger
+
+    // Unmask EXTI13
+    EXTI->IMR1 |= (1 << BUTTON_PIN);
+
+    //Configuramos el Led como un output y el Button como input
+    init_gpio_pin(GPIOA, LED_PIN, 0x1); // Set LED pin as output
+    init_gpio_pin(GPIOC, BUTTON_PIN, 0x0); // Set BUTTON pin as input
+
+    // Enable EXTI15_10 interrupt
+    *NVIC_ISER1 |= (1 << (EXTI15_10_IRQn - 32));
+
+    configure_gpio_for_usart();
     
 }
 
 // Emula el comprtamiento de la puerta
 void gpio_set_door_led_state(uint8_t state) {
-    if (state) {
+    if (state!=0) { //Se haya presionado el boton si quiera una vez
+
         GPIOA->ODR |= (1 << 4); // encender LED estado puerta
+        
+        //Que se haya presionado una vez y que dure 500ms prendido
+        if ((state==1) & ( systick_GetTick == 500)) { 
+            GPIOA->ODR &= ~(1 << 4); // apagar LED estado puerta
+        }
     } else {
         GPIOA->ODR &= ~(1 << 4); // apagar LED estado puerta
     }

@@ -21,7 +21,7 @@ void run_state_machine(void) {
             // No periodic action in locked state
             break;
         case TEMP_UNLOCK:
-            if (systick_GetTick() - unlock_timer >= TEMP_UNLOCK_DURATION) {
+            if (systick_GetTick() - unlock_timer >= TEMP_UNLOCK_DURATION) {  //
                 gpio_set_door_led_state(0); // Turn off door state LED
                 current_state = LOCKED;
             }
@@ -40,7 +40,12 @@ void handle_event(uint8_t event) {
     } else if (event == 2) { // Double button press
         gpio_set_door_led_state(1); // Turn on door state LED
         current_state = PERM_UNLOCK;
-    } else if (event == 'O') { // UART OPEN command
+    } 
+      else if(event==0){
+        gpio_set_door_led_state(0);
+        current_state = LOCKED;
+      }
+      else if (event == 'O') { // UART OPEN command
         gpio_set_door_led_state(1); // Turn on door state LED
         current_state = TEMP_UNLOCK;
         unlock_timer = systick_GetTick();
